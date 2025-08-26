@@ -318,7 +318,7 @@ pub fn have_intranet_access() -> bool {
     if now.duration_since(guard.0) >= TTL_SLOW {
         const CREATE_NO_WINDOW: u32 = 0x08000000;
         let val = std::process::Command::new("ping.exe")
-            .args(&["-n", "1", "grupoaec.com.br"])
+            .args(&["-n", "1", "intranet.com.br"])
             .creation_flags(CREATE_NO_WINDOW)
             .output()
             .map(|o| o.status.success())
@@ -329,3 +329,4 @@ pub fn have_intranet_access() -> bool {
 
     guard.1
 }
+

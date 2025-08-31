@@ -16,7 +16,6 @@ impl eframe::App for Neon {
         let label_color = Color32::from_black_alpha(210);
         let green_color = Color32::from_rgb(0, 184, 107);
         let red_color = Color32::from_rgb(228, 30, 33);
-        let shadow_color = Color32::LIGHT_GRAY;
         let white_color = Color32::WHITE;
         let light_gray_color = Color32::LIGHT_GRAY;
 
@@ -36,13 +35,12 @@ impl eframe::App for Neon {
         ui: &mut egui::Ui,
         shadow_color: Color32,
         white_color: Color32,
-        light_gray_color: Color32,
         add_contents: impl FnOnce(&mut egui::Ui) -> R,
     ) -> R {
         egui::Frame::group(ui.style())
             .corner_radius(10)
             .fill(white_color)
-            .stroke(egui::Stroke::new(1.0, light_gray_color))
+            .stroke(egui::Stroke::new(1.0, shadow_color))
             .shadow(egui::Shadow {
                 offset: [0, 2],
                 blur: 5,
@@ -58,7 +56,7 @@ impl eframe::App for Neon {
 
         CentralPanel::default().show(ctx, |ui| {
             ui.vertical(|ui| {
-                group(ui, shadow_color, white_color, light_gray_color,|ui| {
+                group(ui, light_gray_color, white_color,|ui| {
                     ui.vertical_centered(|ui| {
                         ui.label(RichText::new(format!("{}", get_now())).color(label_color).font(FontId::new(20.0, FontFamily::Monospace)));
                     });
@@ -67,7 +65,7 @@ impl eframe::App for Neon {
                     });
                 });
                 ui.add_space(5.0);
-                group(ui, shadow_color, white_color, light_gray_color,|ui| {
+                group(ui, light_gray_color, white_color,|ui| {
                     ui.horizontal(|ui| {
                         ui.label(RichText::new("FABRICANTE:").color(label_color).font(FontId::new(15.0, FontFamily::Monospace)));
                         ui.with_layout(Layout::right_to_left(Align::Max), |ui| {
@@ -96,7 +94,7 @@ impl eframe::App for Neon {
                     });
                 });
                 ui.add_space(5.0);
-                group(ui, shadow_color, white_color, light_gray_color,|ui| {
+                group(ui, light_gray_color, white_color,|ui| {
                     ui.horizontal(|ui| {
                         ui.label(RichText::new("CPU:").color(label_color).font(FontId::new(15.0, FontFamily::Monospace)));
                         ui.with_layout(Layout::right_to_left(Align::Max), |ui| {
@@ -111,7 +109,7 @@ impl eframe::App for Neon {
                     });
                 });
                 ui.add_space(5.0);
-                group(ui, shadow_color, white_color, light_gray_color, |ui| {
+                group(ui, light_gray_color, white_color,|ui| {
                     ui.horizontal(|ui| {
                         ui.label(RichText::new("RAM:").color(label_color).font(FontId::new(15.0, FontFamily::Monospace)));
                             let (total, _avail) = get_memory_info();
@@ -128,7 +126,7 @@ impl eframe::App for Neon {
                     });
                 });
                 ui.add_space(5.0);
-                group(ui, shadow_color, white_color, light_gray_color, |ui| {
+                group(ui, light_gray_color, white_color,|ui| {
                     ui.horizontal(|ui| {
                         if is_firewall_enabled() {
                             ui.label(RichText::new("Firewall:").color(red_color).font(FontId::new(15.0, FontFamily::Monospace)));
@@ -179,7 +177,7 @@ impl eframe::App for Neon {
                     });
                 });
                 ui.add_space(5.0);
-                group(ui, shadow_color, white_color, light_gray_color, |ui| {
+                group(ui, light_gray_color, white_color,|ui| {
                     ui.horizontal(|ui| {
                         ui.label(RichText::new("EM ATIVIDADE:").color(label_color).font(FontId::new(15.0, FontFamily::Monospace)));
                         ui.with_layout(Layout::right_to_left(Align::Max), |ui| {
@@ -188,7 +186,7 @@ impl eframe::App for Neon {
                     });
                 });
                 ui.add_space(5.0);
-                group(ui, shadow_color, white_color, light_gray_color, |ui| {
+                group(ui, light_gray_color, white_color,|ui| {
                     let join_info = get_join_info();
                     if join_info == "NÃO GERENCIADA" {
                         ui.vertical_centered(|ui| {

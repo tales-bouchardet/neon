@@ -4,7 +4,7 @@ version = "1.0.0"
 edition = "2021"
 
 [dependencies]
-web-view = { version = "0.7.3"}
+eframe = { version = "0.32", default-features = false, features = ["default_fonts", "glow"] }
 windows = { version = "0.61.3", features = ["Win32_Graphics_Gdi", "Win32_Storage_FileSystem", "Win32_Foundation", "Win32_System", "Win32_System_Com", "Win32_System_Registry", "Win32_System_SystemInformation", "Win32_System_Threading", "Win32_Networking_WinHttp", "Win32_NetworkManagement_WindowsFirewall", "Win32_System_LibraryLoader", "Win32_NetworkManagement_NetManagement", "Win32_System_Services"] }
 ico = "0.4.0"
 winreg = "0.55.0"
@@ -31,5 +31,3 @@ debug = 0
 incremental = false
 overflow-checks = false
 debug-assertions = false
-
-

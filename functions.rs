@@ -1,4 +1,3 @@
-
 use std::sync::{Mutex, OnceLock};
 use std::time::{Duration, Instant};
 
@@ -18,6 +17,7 @@ use regex::Regex;
 use std::error::Error;
 use arboard::{Clipboard, ImageData};
 
+
 /*========================= THREADING ============================*/
 
 const TTL_SLOW: Duration = Duration::from_secs(15);
@@ -29,9 +29,9 @@ static PROXY_CACHE: OnceLock<Mutex<(Instant, bool)>> = OnceLock::new();
 static FIREWALL_CACHE: OnceLock<Mutex<(Instant, bool)>> = OnceLock::new();
 
 static CPU_USAGE_CACHE: OnceLock<Mutex<(Instant, String)>> = OnceLock::new();
-static MEM_CACHE: OnceLock<Mutex<(Instant, String)>> = OnceLock::new();
+static MEM_CACHE: OnceLock<Mutex<(Instant, String, String)>> = OnceLock::new();
 static CPU_TIMES_LAST: OnceLock<Mutex<(u64, u64, u64)>> = OnceLock::new();
-static OS_CACHE: OnceLock<Mutex<(Instant, String)>> = OnceLock::new();
+static OS_CACHE: OnceLock<Mutex<(Instant, Option<(String, String)>)>> = OnceLock::new();
 static CPU_INFO_CACHE: OnceLock<Mutex<(Instant, String)>> = OnceLock::new();
 static MANUF_CACHE: OnceLock<Mutex<(Instant, String)>> = OnceLock::new();
 static JOIN_CACHE: OnceLock<Mutex<(Instant, String)>> = OnceLock::new();
@@ -45,7 +45,6 @@ extern "system" {
 
 /*=============================== QUERYS =================================*/
 /*============================= REG QUERYS ===============================*/
-
 pub fn get_file_version(path: &str) -> windows::core::Result<String> {
     let now = Instant::now();
     let cache = FILE_VERSION_CACHE.get_or_init(|| Mutex::new(std::collections::HashMap::new()));
@@ -89,17 +88,18 @@ pub fn get_file_version(path: &str) -> windows::core::Result<String> {
     result
 }
 
-pub fn get_os() -> String {
+
+pub fn get_os() -> Option<(String, String)> {
     let now = Instant::now();
-    let cache = OS_CACHE.get_or_init(|| Mutex::new((Instant::now() - TTL_SLOW, String::new())));
+    let cache = OS_CACHE.get_or_init(|| Mutex::new((Instant::now() - TTL_SLOW, None)));
     let mut c = cache.lock().unwrap();
     if now.duration_since(c.0) < TTL_SLOW { return c.1.clone(); }
     let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
-    let v = if let Ok(key) = hklm.open_subkey_with_flags("SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion", KEY_READ) {
+    let v = if let Ok(key) = hklm.open_subkey_with_flags(r"SOFTWARE\Microsoft\Windows NT\CurrentVersion", KEY_READ) {
         let name: String = key.get_value("ProductName").unwrap_or_default();
         let version: String = key.get_value("DisplayVersion").or_else(|_| key.get_value("ReleaseId")).unwrap_or_default();
-        format!("{} ({})", name.replace("Single Language", "").replace("Multi Language", ""), version).trim().to_string()
-    } else { String::new() };
+        Some((format!("{} {}", name, version).trim().to_string(), std::env::consts::ARCH.to_string()))
+    } else { None };
     *c = (now, v.clone());
     v
 }
@@ -191,10 +191,10 @@ pub fn get_uptime() -> String {
     format!("{:02}d {:02}h {:02}m {:02}s", d, h, m, s)
 }
 
-pub fn get_memory_info() -> String {
+pub fn get_memory_info() -> (String, String) {
     let now = Instant::now();
     let mut cache = MEM_CACHE
-        .get_or_init(|| Mutex::new((Instant::now() - TTL_FAST, String::new())))
+        .get_or_init(|| Mutex::new((Instant::now() - TTL_FAST, String::new(), String::new())))
         .lock()
         .unwrap();
     if now.duration_since(cache.0) >= TTL_FAST {
@@ -206,11 +206,11 @@ pub fn get_memory_info() -> String {
             if GlobalMemoryStatusEx(&mut msx).is_ok() {
                 let total_mb = format!("{:.2} MB", msx.ullTotalPhys as f64 / 1024.0 / 1024.0);
                 let avail_mb = format!("{:.2} MB", msx.ullAvailPhys as f64 / 1024.0 / 1024.0);
-                *cache = (now, format!("[\"{}\", \"{}\"]", total_mb, avail_mb));
+                *cache = (now, total_mb, avail_mb);
             }
         }
     }
-    cache.1.clone()
+    (cache.1.clone(), cache.2.clone())
 }
 
 pub fn is_firewall_enabled() -> bool {
@@ -289,17 +289,12 @@ pub fn get_join_info() -> String {
         let mut name: windows::core::PWSTR = windows::core::PWSTR::null();
         let result = NetGetJoinInformation(PCWSTR::null(), &mut name, &mut status);
 
-        #[allow(non_upper_case_globals)]
-        const NetSetupAzureADJoined: NETSETUP_JOIN_STATUS = NETSETUP_JOIN_STATUS(3);
-
         if result == 0 {
             if !name.is_null() {
                 let _ = NetApiBufferFree(Some(name.0 as _));
             }
             if status == NetSetupDomainName {
-                return "<green>ACTIVE DIRECTORY</green>".into();
-            } else if status == NetSetupAzureADJoined {
-                return "<green>AZURE AD</green>".into();
+                return "ACTIVE DIRECTORY".into();
             } else {
                 use windows::Win32::System::Services::{
                     CloseServiceHandle, OpenSCManagerW, OpenServiceW, SC_MANAGER_CONNECT, SERVICE_QUERY_STATUS,
@@ -310,13 +305,13 @@ pub fn get_join_info() -> String {
                     if let Ok(svc_handle) = OpenServiceW(scm_handle, windows::core::w!("IntuneManagementExtension"), SERVICE_QUERY_STATUS) {
                         let _ = CloseServiceHandle(svc_handle);
                         let _ = CloseServiceHandle(scm_handle);
-                        return "<green>INTUNE</green>".into();
+                        return "INTUNE".into();
                     }
                     let _ = CloseServiceHandle(scm_handle);
                 }
             }
         }
-        "<red>NÃO GERENCIADA</red>".into()
+        "NÃO GERENCIADA".into()
     };
     *c = (now, v.clone());
     v
@@ -340,7 +335,6 @@ pub fn have_intranet_access() -> bool {
         guard.0 = now;
         guard.1 = val;
     }
-
     guard.1
 }
 
@@ -379,4 +373,3 @@ pub fn screenshot() -> Result<(), Box<dyn Error>> {
 
     Ok(())
 }
-
